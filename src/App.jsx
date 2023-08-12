@@ -5,7 +5,7 @@ import Login from "./components/Login";
 const App = () => {
   const [logged, setLogged] = useState(false);
   return (
-    <section className='min-h-screen bg-gradient-to-r from-slate-900 to-slate-700 relative'>
+    <section className='min-h-[100vh] bg-gradient-to-r from-slate-900 to-slate-700 relative overflow-y-scroll'>
       {logged ? (
         <ChatRoom name={localStorage.getItem("name")} />
       ) : (
