@@ -6,6 +6,7 @@ const ChatRoom = ({ name }) => {
   const [message, setMessage] = useState("");
   const [greetings, setGreetings] = useState([]);
   const [client, setClient] = useState(null);
+  const [receiver, setReceiver] = useState("");
 
   useEffect(() => {
     const sock = new SockJS("http://localhost:8080/gs-guide-websocket");
@@ -21,26 +22,33 @@ const ChatRoom = ({ name }) => {
         console.log("Connected to WebSocket");
         setClient(stompClient);
 
-        stompClient.subscribe("/topic/greetings", (message) => {
-          const response = JSON.parse(message.body);
-          setGreetings(response);
-        });
+        stompClient.subscribe(
+          "/user/" + name.toLowerCase() + "/private",
+          onMessageReceived
+        );
       },
       (err) => {
         console.error(err);
       }
     );
-  }, [message]);
+  }, []);
+
+  const onMessageReceived = (message) => {
+    const response = JSON.parse(message.body);
+    setGreetings((prevGreetings) => [...prevGreetings, response]);
+  };
 
   const sendMessage = () => {
     if (client && client.connected && message.trim() !== "") {
-      client.send(
-        "/app/hello",
-        {},
-        JSON.stringify({
-          message: message,
-        })
-      );
+      const newMessage = {
+        message: message,
+        receiver: receiver.toLowerCase(),
+        sender: name,
+        date: new Date().toLocaleString(),
+      };
+      client.send("/app/user-message", {}, JSON.stringify(newMessage));
+      greetings.push(newMessage);
+      setGreetings(greetings);
       setMessage("");
     }
   };
@@ -50,6 +58,13 @@ const ChatRoom = ({ name }) => {
       <h2 className='text-slate-400 font-bold text-3xl text-center'>
         Welcome {name}
       </h2>
+      <input
+        type='text'
+        placeholder='Receiver Name'
+        value={receiver}
+        className='focus:outline-none bg-inherit border border-slate-400 px-3 py-2 rounded-md text-slate-400 w-full'
+        onChange={(e) => setReceiver(e.target.value)}
+      />
       <div className='flex space-x-4'>
         <input
           type='text'
@@ -64,10 +79,14 @@ const ChatRoom = ({ name }) => {
         </button>
       </div>
       <table className='text-slate-400'>
-        <tbody>
+        <tbody className='space-y-6 pb-10'>
           {greetings.map((greeting, index) => (
-            <tr key={index}>
-              <td>{greeting.message}</td>
+            <tr key={index} className='flex flex-col space-y-3'>
+              <td className='flex space-x-2 text-xs'>
+                <h2>{greeting.sender}</h2>
+                <h2>{greeting.date}</h2>
+              </td>
+              <td className='text-lg'>{greeting.message}</td>
             </tr>
           ))}
         </tbody>
@@ -75,5 +94,5 @@ const ChatRoom = ({ name }) => {
     </div>
   );
 };
- 
+
 export default ChatRoom;
